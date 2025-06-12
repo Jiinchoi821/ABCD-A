@@ -1,0 +1,51 @@
+pip install ultralytics opencv-python
+
+#압축 해제
+import zipfile
+
+with zipfile.ZipFile('Line_sensing.v1i.yolov8.zip', 'r') as zip_ref:
+    zip_ref.extractall('dataset')
+
+#학습
+from ultralytics import YOLO
+model = YOLO('yolov8n-seg.pt')  # 또는 yolov8s-seg.pt 등
+model.train(
+    data='dataset/data.yaml', #yaml 수정
+    epochs=2000, #횟수
+    imgsz=640,
+    task='segment',
+    workers=0,
+    patience=0
+)
+
+from ultralytics import YOLO
+
+# 학습된 YOLOv8 세그멘테이션 모델 불러오기
+model = YOLO('runs/segment/train8/weights/best.pt')
+
+# 원본 이미지 폴더에 대해 추론 실행
+results = model('dataset/train/images', save=True, task='segment')
+
+import cv2
+import os
+from glob import glob
+
+img_folder = 'runs\segment\predict'
+output_video = 'segmentation_result2.mp4'
+
+# 이미지 목록
+img_files = sorted(glob(os.path.join(img_folder, '*.jpg')) + glob(os.path.join(img_folder, '*.png')))
+if not img_files:
+    print("❌ 결과 이미지가 없습니다.")
+    exit()
+
+# 비디오 설정
+frame = cv2.imread(img_files[0])
+height, width, _ = frame.shape
+video = cv2.VideoWriter(output_video, cv2.VideoWriter_fourcc(*'mp4v'), 5, (width, height))
+
+for img in img_files:
+    video.write(cv2.imread(img))
+
+video.release()
+print(f"✅ 비디오 저장 완료: {output_video}")
